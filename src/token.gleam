@@ -1,7 +1,14 @@
 import token_type.{type TokenType}
 
+
+pub type Literal {
+  String
+  Number
+  Nil
+}
+
 pub type Token {
-  Token(token_type: TokenType, lexeme: String, literal: Nil, line: Int)
+  Token(token_type: TokenType, lexeme: String, literal: Literal, line: Int)
 }
 
 pub fn new(token_type: TokenType, lexeme: String, line: Int) -> Token {

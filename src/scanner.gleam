@@ -1,3 +1,4 @@
+import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -5,64 +6,92 @@ import gleam/string
 import token.{type Token}
 import token_type
 
-pub type Scanner {
-  Scanner(source: List(String), tokens: List(Token), line: Int, had_error: Bool)
+pub type ScanError {
+  UnexpectedCharacter(c: String, line: Int)
 }
 
-pub fn new(source: String) -> Scanner {
-  Scanner(
-    source: string.to_graphemes(source),
-    tokens: [],
-    line: 1,
-    had_error: False,
-  )
+pub type ScanResult {
+  ScanResult(tokens: List(Token), had_error: Bool)
 }
 
-pub fn scan_tokens(scanner: Scanner) -> Scanner {
-  case scanner.source {
-    [] -> {
-      let new = token.new(token_type.EOF, "", scanner.line)
-      Scanner(..scanner, tokens: list.append(scanner.tokens, [new]))
-    }
+pub fn scan(source: String) -> ScanResult {
+  string.to_graphemes(source)
+  |> InnerScanResult(tokens: [], had_error: False)
+  |> inner_scan
+  |> fn(res) { ScanResult(tokens: res.tokens, had_error: res.had_error) }
+}
+
+type InnerScanResult {
+  InnerScanResult(source: List(String), tokens: List(Token), had_error: Bool)
+}
+
+fn inner_scan(input: InnerScanResult) -> InnerScanResult {
+  case input.source {
+    [] ->
+      InnerScanResult(
+        ..input,
+        tokens: list.append(input.tokens, [token.new(token_type.EOF, "", 1)]),
+      )
     [c, ..rest] -> {
-      // Scan a new token and continu scanning the rest of the source code.
-      case scan_token(c, rest, scanner) {
+      case scan_token(c) {
         // If the token could not be scanned, then we have an error.
-        None -> Scanner(..scanner, source: rest, had_error: True)
-        Some(new_token) ->
-          Scanner(
-            ..scanner,
-            source: rest,
-            tokens: list.append(scanner.tokens, [new_token]),
-          )
+        Error(msg) -> {
+          scanner_error_to_string(msg) |> io.println_error
+          InnerScanResult(..input, source: rest, had_error: True)
+        }
+        Ok(new_token) -> {
+          case new_token {
+            None -> InnerScanResult(..input, source: rest)
+            Some(token) -> {
+              InnerScanResult(
+                ..input,
+                source: rest,
+                tokens: list.append(input.tokens, [token]),
+              )
+            }
+          }
+        }
       }
-      |> scan_tokens
+      |> inner_scan
     }
   }
 }
 
-pub fn print_tokens(scanner: Scanner) -> Nil {
+fn scan_token(c: String) -> Result(Option(Token), ScanError) {
+  let line = 1
+  case c {
+    "(" -> token_type.LeftParen |> token.new("(", line) |> Some |> Ok
+    ")" -> token_type.RightParen |> token.new(")", line) |> Some |> Ok
+    "{" -> token_type.LeftBrace |> token.new("{", line) |> Some |> Ok
+    "}" -> token_type.RightBrace |> token.new("}", line) |> Some |> Ok
+    "," -> token_type.Comma |> token.new(",", line) |> Some |> Ok
+    "." -> token_type.Dot |> token.new(".", line) |> Some |> Ok
+    "-" -> token_type.Minus |> token.new("-", line) |> Some |> Ok
+    "+" -> token_type.Plus |> token.new("+", line) |> Some |> Ok
+    ";" -> token_type.Semicolon |> token.new(";", line) |> Some |> Ok
+    "/" -> token_type.Slash |> token.new("/", line) |> Some |> Ok
+    "*" -> token_type.Star |> token.new("*", line) |> Some |> Ok
+    " " -> Ok(None)
+    "\n" -> {
+      // Should find a way to increment the line number.
+      Ok(None)
+    }
+    "\t" -> Ok(None)
+    "\r" -> Ok(None)
+    _ -> UnexpectedCharacter(c, line) |> Error
+  }
+}
+
+pub fn print_tokens(scanner: ScanResult) -> Nil {
   scanner.tokens
   |> list.map(token.to_string)
   |> list.each(io.println)
 }
 
-/// Scans a single token from the source code.
-///
-/// Returns `None` if the token could not be scanned.
-fn scan_token(c: String, _rest: List(String), scanner: Scanner) -> Option(Token) {
-  case c {
-    "(" -> token_type.LeftParen |> token.new("(", scanner.line) |> Some
-    ")" -> token_type.RightParen |> token.new(")", scanner.line) |> Some
-    "{" -> token_type.LeftBrace |> token.new("{", scanner.line) |> Some
-    "}" -> token_type.RightBrace |> token.new("}", scanner.line) |> Some
-    "," -> token_type.Comma |> token.new(",", scanner.line) |> Some
-    "." -> token_type.Dot |> token.new(".", scanner.line) |> Some
-    "-" -> token_type.Minus |> token.new("-", scanner.line) |> Some
-    "+" -> token_type.Plus |> token.new("+", scanner.line) |> Some
-    ";" -> token_type.Semicolon |> token.new(";", scanner.line) |> Some
-    "/" -> token_type.Slash |> token.new("/", scanner.line) |> Some
-    "*" -> token_type.Star |> token.new("*", scanner.line) |> Some
-    _ -> None
+fn scanner_error_to_string(error: ScanError) -> String {
+  case error {
+    UnexpectedCharacter(c, line) -> {
+      "[line " <> int.to_string(line) <> "] Error: Unexpected character: " <> c
+    }
   }
 }

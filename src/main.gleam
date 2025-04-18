@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/string
-import scanner.{scan_tokens}
+import scanner
 
 import argv
 import simplifile
@@ -11,7 +11,11 @@ pub fn main() {
   case args {
     ["tokenize", filename] -> {
       case simplifile.read(filename) {
-        Ok(contents) -> run(contents)
+        Ok(contents) ->
+          case run(contents) {
+            Ok(_) -> Nil
+            Error(_) -> exit(65)
+          }
         Error(error) -> {
           io.println_error("Error: " <> simplifile.describe_error(error))
           exit(1)
@@ -28,9 +32,17 @@ pub fn main() {
 @external(erlang, "erlang", "halt")
 pub fn exit(code: Int) -> Nil
 
-pub fn run(source: String) {
+pub fn run(source: String) -> Result(Nil, Bool) {
   case string.length(source) {
-    0 -> io.println("EOF  null")
-    _ -> scanner.new(source) |> scan_tokens |> scanner.print_tokens
+    0 -> io.println("EOF  null") |> Ok
+    _ ->
+      scanner.scan(source)
+      |> fn(res) {
+        scanner.print_tokens(res)
+        case res.had_error {
+          True -> Error(res.had_error)
+          False -> Ok(Nil)
+        }
+      }
   }
 }
