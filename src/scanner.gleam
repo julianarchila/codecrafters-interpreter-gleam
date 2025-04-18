@@ -56,6 +56,13 @@ fn scan_token(c: String, _rest: List(String), scanner: Scanner) -> Option(Token)
     ")" -> token_type.RightParen |> token.new(")", scanner.line) |> Some
     "{" -> token_type.LeftBrace |> token.new("{", scanner.line) |> Some
     "}" -> token_type.RightBrace |> token.new("}", scanner.line) |> Some
+    "," -> token_type.Comma |> token.new(",", scanner.line) |> Some
+    "." -> token_type.Dot |> token.new(".", scanner.line) |> Some
+    "-" -> token_type.Minus |> token.new("-", scanner.line) |> Some
+    "+" -> token_type.Plus |> token.new("+", scanner.line) |> Some
+    ";" -> token_type.Semicolon |> token.new(";", scanner.line) |> Some
+    "/" -> token_type.Slash |> token.new("/", scanner.line) |> Some
+    "*" -> token_type.Star |> token.new("*", scanner.line) |> Some
     _ -> None
   }
 }
