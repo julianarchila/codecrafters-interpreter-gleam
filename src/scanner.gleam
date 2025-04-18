@@ -54,6 +54,8 @@ fn scan_token(c: String, _rest: List(String), scanner: Scanner) -> Option(Token)
   case c {
     "(" -> token_type.LeftParen |> token.new("(", scanner.line) |> Some
     ")" -> token_type.RightParen |> token.new(")", scanner.line) |> Some
+    "{" -> token_type.LeftBrace |> token.new("{", scanner.line) |> Some
+    "}" -> token_type.RightBrace |> token.new("}", scanner.line) |> Some
     _ -> None
   }
 }
