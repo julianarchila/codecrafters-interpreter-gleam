@@ -231,20 +231,21 @@ fn match_second_char(
 
 fn handle_slash(rest: List(String), line: Int) -> Result(TokenResult, ScanError) {
   case rest {
-    [next, ..remaining] if next == "/" -> handle_comment(remaining, line)
+    [next, ..remaining] if next == "/" -> consume_comment(remaining, line)
     _ -> create_token(token_type.Slash, "/", rest, line)
   }
 }
 
 // Function to handle comments. In that case we should consume the comment and return the rest of the source. The comment ends with a new line.
-fn handle_comment(
+// We could recursively consume the comment
+fn consume_comment(
   rest: List(String),
   line: Int,
 ) -> Result(TokenResult, ScanError) {
   case rest {
-    [next, ..remaining] if next == "\n" -> {
+    [next, ..remaining] if next == "\n" ->
       Ok(TokenResult(None, remaining, line + 1))
-    }
-    _ -> Ok(TokenResult(None, rest, line))
+    [_next, ..remaining] -> consume_comment(remaining, line)
+    [] -> Ok(TokenResult(None, [], line + 1))
   }
 }
