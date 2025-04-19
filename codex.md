@@ -440,4 +440,130 @@ This document provides instructions and examples for generating Gleam code. Glea
 *   **`gleam/dict`:** Functions for working with key-value maps (`new`, `from_list`, `insert`, `delete`). Dictionaries are unordered.
 *   **`gleam/option`:** Defines the `Option` type (`Some`, `None`) and functions for working with it. Used to represent the presence or absence of a value.
 
+**Testing library (gleeunit):**
+
+```markdown
+# gleeunit
+
+**Pages**
+
+*   [README](#readme)
+
+**Modules**
+
+*   [gleeunit](#gleeunit)
+*   [gleeunit/should](#gleeunitshould)
+
+## gleeunit
+
+Gleam bindings to the Erlang EUnit test framework.
+
+A custom test runner is included for when compiled to JavaScript running on either NodeJS or Deno.
+
+### Usage
+
+Add this package to your Gleam project.
+
+```bash
+gleam add gleeunit --dev
+```
+
+And then call the `gleeunit.main` function from your test main function.
+
+```gleam
+// In test/yourapp_test.gleam
+import gleeunit
+
+pub fn main() {
+  gleeunit.main()
+}
+```
+
+Now any public function with a name ending in `_test` in the `test` directory will be found and run as a test.
+
+```gleam
+pub fn the_universe_test() {
+  let assert 1 = 1
+}
+```
+
+Run the tests by entering `gleam test` in the command line.
+
+### Deno
+
+If using the Deno JavaScript runtime, you will need to add the following to your `gleam.toml`.
+
+```toml
+[javascript.deno]
+allow_read = [
+  "gleam.toml",
+  "test",
+  "build",
+]
+```
+
+✨
+
+## gleeunit/should
+
+A module for testing your Gleam code. The functions found here are compatible with the Erlang eunit test framework.
+
+### Functions
+
+#### be_error
+
+```gleam
+pub fn be_error(a: Result(a, b)) -> b
+```
+
+#### be_false
+
+```gleam
+pub fn be_false(actual: Bool) -> Nil
+```
+
+#### be_none
+
+```gleam
+pub fn be_none(a: Option(a)) -> Nil
+```
+
+#### be_ok
+
+```gleam
+pub fn be_ok(a: Result(a, b)) -> a
+```
+
+#### be_some
+
+```gleam
+pub fn be_some(a: Option(a)) -> a
+```
+
+#### be_true
+
+```gleam
+pub fn be_true(actual: Bool) -> Nil
+```
+
+#### equal
+
+```gleam
+pub fn equal(a: a, b: a) -> Nil
+```
+
+#### fail
+
+```gleam
+pub fn fail() -> Nil
+```
+
+#### not_equal
+
+```gleam
+pub fn not_equal(a: a, b: a) -> Nil
+```
+```
+
+
 By following these instructions and referring to the examples, you should be able to generate correct and idiomatic Gleam code. Remember to prioritize clarity, type safety, and leveraging Gleam's built-in features like pattern matching and the standard library.
