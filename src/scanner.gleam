@@ -179,7 +179,9 @@ fn scan_token(
         ">",
         line,
       )
-    "/" -> create_token(token_type.Slash, "/", rest, line)
+
+    // Handle slash and comments
+    "/" -> handle_slash(rest, line)
 
     // Whitespace (skip)
     " " -> skip(rest, line)
@@ -224,5 +226,25 @@ fn match_second_char(
       create_token(match_type, combined_lexeme, remaining, line)
     }
     _ -> create_token(default_type, lexeme, rest, line)
+  }
+}
+
+fn handle_slash(rest: List(String), line: Int) -> Result(TokenResult, ScanError) {
+  case rest {
+    [next, ..remaining] if next == "/" -> handle_comment(remaining, line)
+    _ -> create_token(token_type.Slash, "/", rest, line)
+  }
+}
+
+// Function to handle comments. In that case we should consume the comment and return the rest of the source. The comment ends with a new line.
+fn handle_comment(
+  rest: List(String),
+  line: Int,
+) -> Result(TokenResult, ScanError) {
+  case rest {
+    [next, ..remaining] if next == "\n" -> {
+      Ok(TokenResult(None, remaining, line + 1))
+    }
+    _ -> Ok(TokenResult(None, rest, line))
   }
 }
