@@ -161,6 +161,24 @@ fn scan_token(
         "=",
         line,
       )
+    "<" ->
+      match_second_char(
+        rest,
+        "=",
+        token_type.LessEqual,
+        token_type.Less,
+        "<",
+        line,
+      )
+    ">" ->
+      match_second_char(
+        rest,
+        "=",
+        token_type.GreaterEqual,
+        token_type.Greater,
+        ">",
+        line,
+      )
     "/" -> create_token(token_type.Slash, "/", rest, line)
 
     // Whitespace (skip)
