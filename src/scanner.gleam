@@ -16,13 +16,18 @@ pub type ScanResult {
 
 pub fn scan(source: String) -> ScanResult {
   string.to_graphemes(source)
-  |> InnerScanResult(tokens: [], had_error: False)
+  |> InnerScanResult(tokens: [], had_error: False, line: 1)
   |> inner_scan
   |> fn(res) { ScanResult(tokens: res.tokens, had_error: res.had_error) }
 }
 
 type InnerScanResult {
-  InnerScanResult(source: List(String), tokens: List(Token), had_error: Bool)
+  InnerScanResult(
+    source: List(String),
+    tokens: List(Token),
+    had_error: Bool,
+    line: Int,
+  )
 }
 
 fn inner_scan(input: InnerScanResult) -> InnerScanResult {
@@ -30,10 +35,12 @@ fn inner_scan(input: InnerScanResult) -> InnerScanResult {
     [] ->
       InnerScanResult(
         ..input,
-        tokens: list.append(input.tokens, [token.new(token_type.EOF, "", 1)]),
+        tokens: list.append(input.tokens, [
+          token.new(token_type.EOF, "", input.line),
+        ]),
       )
     [c, ..rest] -> {
-      case scan_token(c, rest) {
+      case scan_token(c, rest, input.line) {
         // If the token could not be scanned, then we have an error.
         Error(msg) -> {
           scanner_error_to_string(msg) |> io.println_error
@@ -41,12 +48,18 @@ fn inner_scan(input: InnerScanResult) -> InnerScanResult {
         }
         Ok(res) -> {
           case res.token {
-            None -> InnerScanResult(..input, source: res.new_source)
+            None ->
+              InnerScanResult(
+                ..input,
+                source: res.new_source,
+                line: res.new_line,
+              )
             Some(token) -> {
               InnerScanResult(
                 ..input,
                 source: res.new_source,
                 tokens: list.append(input.tokens, [token]),
+                line: res.new_line,
               )
             }
           }
@@ -58,123 +71,61 @@ fn inner_scan(input: InnerScanResult) -> InnerScanResult {
 }
 
 type ScanTokenResult {
-  ScanTokenResult(token: Option(Token), new_source: List(String))
+  ScanTokenResult(token: Option(Token), new_source: List(String), new_line: Int)
+}
+
+// Helper to create a token result
+fn ok_token(
+  kind: token_type.TokenType,
+  lexeme: String,
+  rest: List(String),
+  line: Int,
+) -> Result(ScanTokenResult, ScanError) {
+  let tok = token.new(kind, lexeme, line)
+  Ok(ScanTokenResult(Some(tok), rest, line))
+}
+
+// Helper to skip a character without emitting a token
+fn skip(rest: List(String), new_line: Int) -> Result(ScanTokenResult, ScanError) {
+  Ok(ScanTokenResult(None, rest, new_line))
 }
 
 fn scan_token(
   c: String,
   rest: List(String),
+  line: Int,
 ) -> Result(ScanTokenResult, ScanError) {
-  let line = 1
   case c {
-    "(" ->
-      token_type.LeftParen
-      |> token.new("(", line)
-      |> Some
-      |> ScanTokenResult(rest)
-      |> Ok
-    ")" ->
-      token_type.RightParen
-      |> token.new(")", line)
-      |> Some
-      |> ScanTokenResult(rest)
-      |> Ok
-    "{" ->
-      token_type.LeftBrace
-      |> token.new("{", line)
-      |> Some
-      |> ScanTokenResult(rest)
-      |> Ok
-    "}" ->
-      token_type.RightBrace
-      |> token.new("}", line)
-      |> Some
-      |> ScanTokenResult(rest)
-      |> Ok
-    "," ->
-      token_type.Comma
-      |> token.new(",", line)
-      |> Some
-      |> ScanTokenResult(rest)
-      |> Ok
-    "." ->
-      token_type.Dot
-      |> token.new(".", line)
-      |> Some
-      |> ScanTokenResult(rest)
-      |> Ok
-    "-" ->
-      token_type.Minus
-      |> token.new("-", line)
-      |> Some
-      |> ScanTokenResult(rest)
-      |> Ok
-    "+" ->
-      token_type.Plus
-      |> token.new("+", line)
-      |> Some
-      |> ScanTokenResult(rest)
-      |> Ok
-    ";" ->
-      token_type.Semicolon
-      |> token.new(";", line)
-      |> Some
-      |> ScanTokenResult(rest)
-      |> Ok
-    "/" ->
-      token_type.Slash
-      |> token.new("/", line)
-      |> Some
-      |> ScanTokenResult(rest)
-      |> Ok
-    "*" ->
-      token_type.Star
-      |> token.new("*", line)
-      |> Some
-      |> ScanTokenResult(rest)
-      |> Ok
+    "(" -> ok_token(token_type.LeftParen, "(", rest, line)
+    ")" -> ok_token(token_type.RightParen, ")", rest, line)
+    "{" -> ok_token(token_type.LeftBrace, "{", rest, line)
+    "}" -> ok_token(token_type.RightBrace, "}", rest, line)
+    "," -> ok_token(token_type.Comma, ",", rest, line)
+    "." -> ok_token(token_type.Dot, ".", rest, line)
+    "-" -> ok_token(token_type.Minus, "-", rest, line)
+    "+" -> ok_token(token_type.Plus, "+", rest, line)
+    ";" -> ok_token(token_type.Semicolon, ";", rest, line)
+    "/" -> ok_token(token_type.Slash, "/", rest, line)
+    "*" -> ok_token(token_type.Star, "*", rest, line)
 
-    "=" -> {
-      // if next character is "=" then it is an assignment, otherwise it is an equals
+    "!" ->
       case rest {
-        [next, ..rest2] -> {
-          case next {
-            "=" -> {
-              token_type.EqualEqual
-              |> token.new("==", line)
-              |> Some
-              |> ScanTokenResult(rest2)
-              |> Ok
-            }
-            _ -> {
-              token_type.Equal
-              |> token.new("=", line)
-              |> Some
-              |> ScanTokenResult(rest)
-              |> Ok
-            }
-          }
-        }
-        [] -> {
-          token_type.Equal
-          |> token.new("=", line)
-          |> Some
-          |> ScanTokenResult(rest)
-          |> Ok
-        }
+        ["=", ..rest2] -> ok_token(token_type.BangEqual, "!=", rest2, line)
+        _ -> ok_token(token_type.Bang, "!", rest, line)
       }
-    }
+    "=" ->
+      case rest {
+        ["=", ..rest2] -> ok_token(token_type.EqualEqual, "==", rest2, line)
+        _ -> ok_token(token_type.Equal, "=", rest, line)
+      }
 
-    // Skipt tokens
-    " " -> ScanTokenResult(None, rest) |> Ok
-    "\n" -> {
-      // Should find a way to increment the line number.
-      ScanTokenResult(None, rest) |> Ok
-    }
-    "\t" -> ScanTokenResult(None, rest) |> Ok
-    "\r" -> ScanTokenResult(None, rest) |> Ok
+    // Skip whitespace
+    " " -> skip(rest, line)
+    "\n" -> skip(rest, line + 1)
+    "\t" -> skip(rest, line)
+    "\r" -> skip(rest, line)
 
-    // Anything else is a unexpected character.
+    // Unexpected character
     _ -> UnexpectedCharacter(c, line) |> Error
   }
 }
