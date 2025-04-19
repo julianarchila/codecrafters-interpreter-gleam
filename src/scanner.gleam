@@ -243,9 +243,8 @@ fn consume_comment(
   line: Int,
 ) -> Result(TokenResult, ScanError) {
   case rest {
-    [next, ..remaining] if next == "\n" ->
-      Ok(TokenResult(None, remaining, line + 1))
+    [next, ..remaining] if next == "\n" -> skip(remaining, line + 1)
     [_next, ..remaining] -> consume_comment(remaining, line)
-    [] -> Ok(TokenResult(None, [], line + 1))
+    [] -> skip(rest, line + 1)
   }
 }
